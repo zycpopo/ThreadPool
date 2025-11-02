@@ -49,7 +49,7 @@ std::string GetCurrentTime()
 
   char timebuffer[64];
   snprintf(timebuffer, sizeof(timebuffer), "%4d-%02d-%02d %02d:%02d:%02d",
-           currtm.tm_year + 1990,
+           currtm.tm_year + 1900,
            currtm.tm_mon + 1,
            currtm.tm_mday,
            currtm.tm_hour,
@@ -87,7 +87,7 @@ private:
 };
 
 const std::string logdefaultpath = "Logger";
-const static std::string filedefaultpath = "test.log";
+const static std::string filedefaultname = "test.log";
 
 // 文件刷新
 class FileLogStrategy : public LogStrategy
@@ -157,6 +157,41 @@ public:
   class LogMessage
   {
   public:
+    LogMessage(LogLevel level, std::string &filename, int line, Logger &logger)
+        : _curr_time(GetCurrentTime()),
+          _level(level),
+          _pid(getpid()),
+          _filename(filename),
+          _line(line),
+          _logger(logger)
+    {
+      std::stringstream ss;
+      ss << "[" << _curr_time << "]"
+         << "[" << LogLeveltoString(_level) << "]"
+         << "[" << _pid << "]"
+         << "[" << _filename << "]"
+         << "[" << _line << "]"
+         << " - ";
+      _loginfo = ss.str();
+    }
+
+    template <typename T>
+    LogMessage &operator<<(const T &info)
+    {
+      std::stringstream ss;
+      ss << info;
+      _loginfo += ss.str();
+      return *this;
+    }
+
+    ~LogMessage()
+    {
+      if (_logger._strategy)
+      {
+        _logger._strategy->SyncLog(_loginfo);
+      }
+    }
+
   private:
     std::string _curr_time;
     LogLevel _level;
@@ -164,10 +199,23 @@ public:
     std::string _filename;
     int _line;
 
-    std::string _loginfo;
+    std::string _loginfo; // 将日志信息汇总到一起
     Logger &_logger;
   };
+
+  LogMessage operator()(LogLevel level, std::string filename, int line)
+  {
+    return LogMessage(level, filename, line, *this);
+  }
+  ~Logger()
+  {
+  }
 
 private:
   std::unique_ptr<LogStrategy> _strategy;
 };
+
+Logger logger;
+#define LOG(level) logger(level, __FILE__, __LINE__)
+#define EnableConsoleLogStrategy() logger.EnableConsoleLogStrategy()
+#define EnableFileLogStrategy() logger.EnableFileLogStrategy()
