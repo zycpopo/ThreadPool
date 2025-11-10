@@ -116,11 +116,7 @@ class ThreadPool
         }
       }
 
-      stdtic::std::string ToHex(ThreadPool<T>,*addr)
-      {
-        chsr buffer[64];
-        snprintf(buffer,sizeof(buffer),"%p",addr);
-      }
+      
   private:
       std::queue<T> _q;
       std::vector<Thread>;
